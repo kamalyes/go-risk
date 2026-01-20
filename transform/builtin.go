@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-20 10:08:27
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-20 10:08:27
+ * @LastEditTime: 2026-01-20 15:35:52
  * @FilePath: \go-risk\transform\builtin.go
  * @Description: 内置转换实现
  *
@@ -22,14 +22,14 @@ func Lower() Transform {
 	return strings.ToLower
 }
 
-// URLDecode 返回 URL 解码转换。
+// URLDecode 返回 URL 解码转换，只解码百分号编码，避免字面加号被误转空格。
 func URLDecode() Transform {
 	return func(s string) string {
-		decoded, err := url.QueryUnescape(s)
+		decoded, err := url.PathUnescape(s)
 		if err != nil {
 			return s
 		}
-		return strings.ReplaceAll(decoded, "+", " ")
+		return decoded
 	}
 }
 
