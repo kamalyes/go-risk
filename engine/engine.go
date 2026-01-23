@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-23 09:31:22
+ * @LastEditTime: 2026-01-23 16:58:37
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -41,6 +41,7 @@ func New(opts ...Option) *Engine {
 	for _, opt := range opts {
 		opt(e)
 	}
+	e.chain = newSlotChain(e.slots)
 	return e
 }
 
@@ -80,6 +81,9 @@ func WithSlots(slots ...core.Slot) Option {
 
 // Evaluate 同步决策。
 func (e *Engine) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decision {
+	if e.chain == nil {
+		return core.Decision{Verdict: core.Allow}
+	}
 	return e.chain.run(ctx, rc)
 }
 
