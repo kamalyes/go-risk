@@ -1,8 +1,8 @@
 /**
  * @Author: kamalyes 501893067@qq.com
- * @Date: 2026-01-27 11:06:28
+ * @Date: 2026-01-27 13:06:28
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-27 11:06:28
+ * @LastEditTime: 2026-01-28 15:13:53
  * @FilePath: \go-risk\adapters\nethttp\nethttp.go
  * @Description: 标准库 net/http 适配器
  *
@@ -12,6 +12,7 @@
 package nethttp
 
 import (
+	"bytes"
 	"io"
 	"net"
 	"net/http"
@@ -66,6 +67,8 @@ func readBody(r *http.Request) (string, error) {
 	if err != nil {
 		return "", err
 	}
+	// 恢复请求体，避免下游 handler 读取为空
+	r.Body = io.NopCloser(bytes.NewReader(b))
 	return string(b), nil
 }
 
