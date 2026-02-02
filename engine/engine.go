@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-23 16:58:37
+ * @LastEditTime: 2026-02-02 19:29:33
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -19,7 +19,7 @@ import (
 	"github.com/kamalyes/go-risk/store"
 )
 
-// Engine 风控引擎，装配 core 契约与各功能模块。
+// Engine 风控引擎，装配 core 契约与各功能模块
 type Engine struct {
 	cfg      *core.Config
 	store    core.CounterStore
@@ -28,24 +28,31 @@ type Engine struct {
 	chain    *slotChain
 }
 
-// Option 引擎配置项。
+// Option 引擎配置项
 type Option func(*Engine)
 
 // New 创建引擎，默认内存后端 + 空 Slot 链。
 func New(opts ...Option) *Engine {
-	e := &Engine{
-		cfg:      core.DefaultConfig(),
-		store:    store.NewMemory(),
-		notifier: notifier.NewMemory(),
-	}
+	e := &Engine{cfg: core.DefaultConfig()}
 	for _, opt := range opts {
 		opt(e)
 	}
-	e.chain = newSlotChain(e.slots)
+	e.ensureDefaults()
 	return e
 }
 
-// WithConfig 覆盖默认配置。
+// ensureDefaults 为未注入的后端补齐内存默认实现，并装配 Slot 链。
+func (e *Engine) ensureDefaults() {
+	if e.store == nil {
+		e.store = store.NewMemory()
+	}
+	if e.notifier == nil {
+		e.notifier = notifier.NewMemory()
+	}
+	e.chain = newSlotChain(e.slots)
+}
+
+// WithConfig 覆盖默认配置
 func WithConfig(cfg *core.Config) Option {
 	return func(e *Engine) {
 		if cfg != nil {
@@ -54,7 +61,7 @@ func WithConfig(cfg *core.Config) Option {
 	}
 }
 
-// WithStore 注入计数后端。
+// WithStore 注入计数后端
 func WithStore(s core.CounterStore) Option {
 	return func(e *Engine) {
 		if s != nil {
@@ -63,7 +70,7 @@ func WithStore(s core.CounterStore) Option {
 	}
 }
 
-// WithNotifier 注入通知器。
+// WithNotifier 注入通知器
 func WithNotifier(n core.Notifier) Option {
 	return func(e *Engine) {
 		if n != nil {
@@ -72,14 +79,14 @@ func WithNotifier(n core.Notifier) Option {
 	}
 }
 
-// WithSlots 追加 Slot。
+// WithSlots 追加 Slot
 func WithSlots(slots ...core.Slot) Option {
 	return func(e *Engine) {
 		e.slots = append(e.slots, slots...)
 	}
 }
 
-// Evaluate 同步决策。
+// Evaluate 同步决策
 func (e *Engine) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decision {
 	if e.chain == nil {
 		return core.Decision{Verdict: core.Allow}
@@ -87,8 +94,8 @@ func (e *Engine) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decisi
 	return e.chain.run(ctx, rc)
 }
 
-// MarkResult 请求完成后回写结果，行为分析在后续里程碑落地。
+// MarkResult 请求完成后回写结果，行为分析在后续里程碑落地
 func (e *Engine) MarkResult(ctx context.Context, rc *core.RiskContext, statusCode int, ok bool) {}
 
-// Close 释放资源。
+// Close 释放资源
 func (e *Engine) Close() error { return nil }
