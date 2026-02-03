@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-02 19:29:33
+ * @LastEditTime: 2026-02-03 21:39:51
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -26,6 +26,8 @@ type Engine struct {
 	notifier core.Notifier
 	slots    []core.Slot
 	chain    *slotChain
+	ctx      context.Context
+	cancel   context.CancelFunc
 }
 
 // Option 引擎配置项
@@ -34,6 +36,7 @@ type Option func(*Engine)
 // New 创建引擎，默认内存后端 + 空 Slot 链。
 func New(opts ...Option) *Engine {
 	e := &Engine{cfg: core.DefaultConfig()}
+	e.ctx, e.cancel = context.WithCancel(context.Background())
 	for _, opt := range opts {
 		opt(e)
 	}
@@ -97,5 +100,10 @@ func (e *Engine) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decisi
 // MarkResult 请求完成后回写结果，行为分析在后续里程碑落地
 func (e *Engine) MarkResult(ctx context.Context, rc *core.RiskContext, statusCode int, ok bool) {}
 
-// Close 释放资源
-func (e *Engine) Close() error { return nil }
+// Close 释放资源，取消生命周期上下文。
+func (e *Engine) Close() error {
+	if e.cancel != nil {
+		e.cancel()
+	}
+	return nil
+}
