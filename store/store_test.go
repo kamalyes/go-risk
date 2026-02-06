@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-30 15:26:02
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-30 15:26:02
+ * @LastEditTime: 2026-02-06 22:32:10
  * @FilePath: \go-risk\store\store_test.go
  * @Description: 内存计数后端单元测试
  *
@@ -13,6 +13,7 @@ package store
 
 import (
 	"context"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -34,13 +35,11 @@ func TestMemoryIncrBatch(t *testing.T) {
 	}
 }
 
-func TestMemoryWindowReset(t *testing.T) {
-	m := NewMemory()
-	ctx := context.Background()
-	_ = m.IncrBatch(ctx, []core.CounterOp{{Key: "k", Delta: 1}})
-	time.Sleep(1100 * time.Millisecond)
-	c, _ := m.WindowCount(ctx, "k", time.Second)
-	if c != 0 {
-		t.Fatalf("want reset to 0, got %d", c)
+func TestCounterExpired(t *testing.T) {
+	c := &counter{}
+	c.incr(1, windowNano)
+	atomic.StoreInt64(&c.resetTimeNano, time.Now().UnixNano()-1)
+	if got := c.read(time.Second); got != 0 {
+		t.Fatalf("want 0 after window expired, got %d", got)
 	}
 }
