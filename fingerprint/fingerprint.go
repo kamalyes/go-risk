@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-25 10:20:55
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-25 10:20:55
+ * @LastEditTime: 2026-02-08 20:15:33
  * @FilePath: \go-risk\fingerprint\fingerprint.go
  * @Description: 设备指纹接口与结果定义
  *
@@ -13,10 +13,10 @@ package fingerprint
 
 import "github.com/kamalyes/go-risk/core"
 
-// Fingerprinter 设备指纹接口，输出稳定的设备指纹与机器人概率。
+// Fingerprinter 设备指纹接口，输出稳定指纹与机器人概率。
 type Fingerprinter interface {
-	// Compute 从请求上下文计算设备指纹。
-	Compute(rc *core.RiskContext) string
+	// Identify 从请求上下文计算设备指纹与机器人概率。
+	Identify(rc *core.RiskContext) Result
 }
 
 // Result 指纹计算结果。
