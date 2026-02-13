@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-03 21:39:51
+ * @LastEditTime: 2026-02-13 22:35:52
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -15,7 +15,9 @@ import (
 	"context"
 
 	"github.com/kamalyes/go-risk/core"
+	"github.com/kamalyes/go-risk/fingerprint"
 	"github.com/kamalyes/go-risk/notifier"
+	"github.com/kamalyes/go-risk/rules"
 	"github.com/kamalyes/go-risk/store"
 )
 
@@ -82,10 +84,20 @@ func WithNotifier(n core.Notifier) Option {
 	}
 }
 
-// WithSlots 追加 Slot
+// WithSlots 追加 Slot。
 func WithSlots(slots ...core.Slot) Option {
 	return func(e *Engine) {
 		e.slots = append(e.slots, slots...)
+	}
+}
+
+// WithBuiltinProtection 一键接入 HTTP/TLS 指纹与内置规则集（WAF/蜜罐/威胁情报）。
+func WithBuiltinProtection() Option {
+	return func(e *Engine) {
+		e.slots = append(e.slots,
+			fingerprint.NewSlot(fingerprint.NewHTTP(), fingerprint.NewTLS()),
+			rules.NewSlot(rules.Builtin()),
+		)
 	}
 }
 
