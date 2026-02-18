@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-13 22:35:52
+ * @LastEditTime: 2026-02-18 21:09:32
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -97,6 +97,7 @@ func WithBuiltinProtection() Option {
 		e.slots = append(e.slots,
 			fingerprint.NewSlot(fingerprint.NewHTTP(), fingerprint.NewTLS()),
 			rules.NewSlot(rules.Builtin()),
+			scorer.NewSlot(e.cfg),
 		)
 	}
 }
