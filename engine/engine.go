@@ -18,6 +18,7 @@ import (
 	"github.com/kamalyes/go-risk/fingerprint"
 	"github.com/kamalyes/go-risk/notifier"
 	"github.com/kamalyes/go-risk/rules"
+	"github.com/kamalyes/go-risk/scorer"
 	"github.com/kamalyes/go-risk/store"
 )
 
