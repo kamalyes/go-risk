@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-02-12 21:23:10
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-18 19:25:38
+ * @LastEditTime: 2026-03-03 18:57:22
  * @FilePath: \go-risk\rules\slot.go
  * @Description: WAF 规则 Slot
  *
@@ -38,7 +38,12 @@ func (s *slot) Name() string { return "rules" }
 
 // Evaluate 遍历规则并返回首个命中规则的处置结论
 func (s *slot) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decision {
-	for _, rule := range s.snapshot.Rules {
+	return evaluate(rc, s.snapshot.Rules)
+}
+
+// evaluate 遍历已排序规则，返回首个命中规则的处置结论
+func evaluate(rc *core.RiskContext, rules []core.Rule) core.Decision {
+	for _, rule := range rules {
 		if !grayHit(rc, rule.GrayPct) {
 			continue
 		}
