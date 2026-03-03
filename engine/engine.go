@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-18 21:09:32
+ * @LastEditTime: 2026-03-03 20:39:57
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -13,12 +13,15 @@ package engine
 
 import (
 	"context"
+	"log/slog"
 
 	"github.com/kamalyes/go-risk/core"
 	"github.com/kamalyes/go-risk/fingerprint"
 	"github.com/kamalyes/go-risk/notifier"
+	"github.com/kamalyes/go-risk/observe"
 	"github.com/kamalyes/go-risk/rules"
 	"github.com/kamalyes/go-risk/scorer"
+	"github.com/kamalyes/go-risk/semantic"
 	"github.com/kamalyes/go-risk/store"
 )
 
@@ -27,6 +30,8 @@ type Engine struct {
 	cfg      *core.Config
 	store    core.CounterStore
 	notifier core.Notifier
+	metrics  *observe.Metrics
+	logger   *slog.Logger
 	slots    []core.Slot
 	chain    *slotChain
 	ctx      context.Context
@@ -92,11 +97,30 @@ func WithSlots(slots ...core.Slot) Option {
 	}
 }
 
-// WithBuiltinProtection 一键接入 HTTP/TLS 指纹与内置规则集（WAF/蜜罐/威胁情报）。
+// WithMetrics 注入指标，决策后累计命中率与分布
+func WithMetrics(m *observe.Metrics) Option {
+	return func(e *Engine) {
+		if m != nil {
+			e.metrics = m
+		}
+	}
+}
+
+// WithLogger 注入结构化日志，决策后输出单行 KV
+func WithLogger(l *slog.Logger) Option {
+	return func(e *Engine) {
+		if l != nil {
+			e.logger = l
+		}
+	}
+}
+
+// WithBuiltinProtection 一键接入 HTTP/TLS 指纹、语义检测、内置规则集（WAF/蜜罐/威胁情报）与分级处置。
 func WithBuiltinProtection() Option {
 	return func(e *Engine) {
 		e.slots = append(e.slots,
 			fingerprint.NewSlot(fingerprint.NewHTTP(), fingerprint.NewTLS()),
+			semantic.NewSlot(),
 			rules.NewSlot(rules.Builtin()),
 			scorer.NewSlot(e.cfg),
 		)
@@ -108,7 +132,14 @@ func (e *Engine) Evaluate(ctx context.Context, rc *core.RiskContext) core.Decisi
 	if e.chain == nil {
 		return core.Decision{Verdict: core.Allow}
 	}
-	return e.chain.run(ctx, rc)
+	d := e.chain.run(ctx, rc)
+	if e.metrics != nil {
+		e.metrics.Record(d)
+	}
+	if e.logger != nil {
+		observe.Log(ctx, e.logger, rc, d)
+	}
+	return d
 }
 
 // MarkResult 请求完成后回写结果，行为分析在后续里程碑落地
