@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-31 09:55:31
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-31 09:55:31
+ * @LastEditTime: 2026-03-11 19:53:26
  * @FilePath: \go-risk\adapters\nethttp\nethttp_test.go
  * @Description: net/http 适配器闭环单元测试
  *
@@ -36,7 +36,7 @@ func TestWrapPassthrough(t *testing.T) {
 
 func TestExtractBody(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api", strings.NewReader("hello"))
-	rc := extract(req)
+	rc := Extract(req)
 	if rc.Body != "hello" {
 		t.Fatalf("body = %q, want hello", rc.Body)
 	}

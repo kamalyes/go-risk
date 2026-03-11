@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-27 13:06:28
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-28 15:13:53
+ * @LastEditTime: 2026-03-11 19:53:26
  * @FilePath: \go-risk\adapters\nethttp\nethttp.go
  * @Description: 标准库 net/http 适配器
  *
@@ -25,7 +25,7 @@ const maxBodyRead = 1 << 20 // 最多读取 1MB 请求体
 // Wrap 包装 handler，为每个请求执行风控决策；非放行结论直接中断。
 func Wrap(e core.Engine, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		rc := extract(r)
+		rc := Extract(r)
 		decision := e.Evaluate(r.Context(), rc)
 		if !allow(decision) {
 			writeDecision(w, decision)
@@ -35,8 +35,8 @@ func Wrap(e core.Engine, next http.Handler) http.Handler {
 	})
 }
 
-// extract 从 net/http 请求提取归一化风控上下文。
-func extract(r *http.Request) *core.RiskContext {
+// Extract 从 net/http 请求提取归一化风控上下文
+func Extract(r *http.Request) *core.RiskContext {
 	headers := make(map[string]string, len(r.Header))
 	order := make([]string, 0, len(r.Header))
 	for k, v := range r.Header {
