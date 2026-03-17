@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-15 10:37:51
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-01-15 10:37:51
+ * @LastEditTime: 2026-03-17 11:15:23
  * @FilePath: \go-risk\core\context.go
  * @Description: 风控请求主体与上下文契约定义
  *
@@ -14,11 +14,9 @@ package core
 // Subject 风控主体，用于并行维护信誉与行为计数。
 // 同一攻击者可能切换 IP/UA，通过多维度主体进行交叉识别。
 type Subject struct {
-	IP          string // 客户端 IP
-	Fingerprint string // 设备指纹（服务端被动指纹或可信客户端指纹）
-	TenantID    string // 租户 ID
-	UserID      string // 用户 ID
-	PlatformID  string // 平台 ID
+	IP          string            // 客户端 IP
+	Fingerprint string            // 设备指纹（服务端被动指纹或可信客户端指纹）
+	Attributes  map[string]string // 扩展身份属性，框架不预设业务维度，由接入方注入
 }
 
 // RiskContext 归一化请求信息（框架无关的纯数据结构）。

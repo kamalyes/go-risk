@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-02-28 15:38:05
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-02-28 15:38:05
+ * @LastEditTime: 2026-03-17 11:28:09
  * @FilePath: \go-risk\observe\logger.go
  * @Description: 单行 KV 结构化决策日志
  *
@@ -14,6 +14,7 @@ package observe
 import (
 	"context"
 	"log/slog"
+	"sort"
 	"strings"
 
 	"github.com/kamalyes/go-risk/core"
@@ -27,6 +28,7 @@ func Log(ctx context.Context, logger *slog.Logger, rc *core.RiskContext, d core.
 	logger.InfoContext(ctx, "risk",
 		"trace_id", rc.TraceID,
 		"subject", subject(rc),
+		"attributes", attributesKV(rc.Subject.Attributes),
 		"verdict", d.Verdict.String(),
 		"score", d.Score,
 		"reasons", reasons(d.Reasons),
@@ -39,6 +41,23 @@ func subject(rc *core.RiskContext) string {
 		return rc.Subject.Fingerprint
 	}
 	return rc.Subject.IP
+}
+
+// attributesKV 将扩展身份属性排序后拼为 k=v 单行，保证日志输出稳定
+func attributesKV(attrs map[string]string) string {
+	if len(attrs) == 0 {
+		return ""
+	}
+	keys := make([]string, 0, len(attrs))
+	for k := range attrs {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+	parts := make([]string, 0, len(keys))
+	for _, k := range keys {
+		parts = append(parts, k+"="+attrs[k])
+	}
+	return strings.Join(parts, ",")
 }
 
 // reasons 将命中原因链拼接为单行描述

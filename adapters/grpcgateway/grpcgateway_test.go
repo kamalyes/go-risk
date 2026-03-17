@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-10 19:37:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-10 19:37:22
+ * @LastEditTime: 2026-03-17 11:26:52
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway_test.go
  * @Description: grpc-gateway 适配器闭环单元测试
  *
@@ -17,6 +17,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/kamalyes/go-risk/adapters/nethttp"
 	"github.com/kamalyes/go-risk/engine"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc"
@@ -58,10 +59,14 @@ func TestExtractFromMetadata(t *testing.T) {
 		"x-forwarded-for", "10.0.0.5",
 	)
 	ctx := metadata.NewIncomingContext(context.Background(), md)
-	rc := extract(ctx, "/demo.Service/Hello")
-	assert.Equal(t, "t-100", rc.Subject.TenantID)
-	assert.Equal(t, "u-200", rc.Subject.UserID)
-	assert.Equal(t, "p-300", rc.Subject.PlatformID)
+	rc := extract(ctx, "/demo.Service/Hello", nethttp.SubjectAttributes{
+		"tenant":   "tenant-id",
+		"user":     "user-id",
+		"platform": "platform-id",
+	})
+	assert.Equal(t, "t-100", rc.Subject.Attributes["tenant"])
+	assert.Equal(t, "u-200", rc.Subject.Attributes["user"])
+	assert.Equal(t, "p-300", rc.Subject.Attributes["platform"])
 	assert.Equal(t, "unit-test", rc.UserAgent)
 	assert.Equal(t, "10.0.0.5", rc.Subject.IP)
 	assert.Equal(t, "/demo.Service/Hello", rc.Path)

@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-09 20:19:33
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-09 20:19:33
+ * @LastEditTime: 2026-03-17 11:25:36
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway.go
  * @Description: grpc-gateway 风控适配器（HTTP 中间件 + gRPC 一元拦截器）
  *
@@ -31,10 +31,15 @@ func Middleware(e core.Engine) func(http.Handler) http.Handler {
 	}
 }
 
-// UnaryServerInterceptor 返回 gRPC 服务端一元拦截器，从 metadata 提取主体做决策。
+// UnaryServerInterceptor 返回 gRPC 服务端一元拦截器，不注入扩展身份属性
 func UnaryServerInterceptor(e core.Engine) grpc.UnaryServerInterceptor {
+	return UnaryServerInterceptorWith(e, nil)
+}
+
+// UnaryServerInterceptorWith 支持自定义扩展身份属性来源 metadata key 的一元拦截器
+func UnaryServerInterceptorWith(e core.Engine, h nethttp.SubjectAttributes) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
-		rc := extract(ctx, info.FullMethod)
+		rc := extract(ctx, info.FullMethod, h)
 		decision := e.Evaluate(ctx, rc)
 		if !allow(decision) {
 			return nil, decisionError(decision)
@@ -44,7 +49,7 @@ func UnaryServerInterceptor(e core.Engine) grpc.UnaryServerInterceptor {
 }
 
 // extract 从 gRPC 上下文（metadata + peer）提取归一化风控上下文。
-func extract(ctx context.Context, method string) *core.RiskContext {
+func extract(ctx context.Context, method string, h nethttp.SubjectAttributes) *core.RiskContext {
 	rc := &core.RiskContext{
 		Method:  method,
 		Path:    method,
@@ -62,9 +67,14 @@ func extract(ctx context.Context, method string) *core.RiskContext {
 	}
 	rc.Headers = headers
 	rc.HeaderOrder = order
-	rc.Subject.TenantID = first(md, "tenant-id")
-	rc.Subject.UserID = first(md, "user-id")
-	rc.Subject.PlatformID = first(md, "platform-id")
+	if len(h) > 0 {
+		rc.Subject.Attributes = make(map[string]string, len(h))
+		for attr, key := range h {
+			if v := first(md, key); v != "" {
+				rc.Subject.Attributes[attr] = v
+			}
+		}
+	}
 	rc.UserAgent = first(md, "user-agent")
 	if ip := first(md, "x-forwarded-for"); ip != "" {
 		rc.Subject.IP = ip
