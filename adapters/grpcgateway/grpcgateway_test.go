@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-10 19:37:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 11:26:52
+ * @LastEditTime: 2026-03-17 12:05:09
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway_test.go
  * @Description: grpc-gateway 适配器闭环单元测试
  *
@@ -57,6 +57,7 @@ func TestExtractFromMetadata(t *testing.T) {
 		"platform-id", "p-300",
 		"user-agent", "unit-test",
 		"x-forwarded-for", "10.0.0.5",
+		"x-risk-id", "risk-100",
 	)
 	ctx := metadata.NewIncomingContext(context.Background(), md)
 	rc := extract(ctx, "/demo.Service/Hello", nethttp.SubjectAttributes{
@@ -64,6 +65,7 @@ func TestExtractFromMetadata(t *testing.T) {
 		"user":     "user-id",
 		"platform": "platform-id",
 	})
+	assert.Equal(t, "risk-100", rc.TraceID)
 	assert.Equal(t, "t-100", rc.Subject.Attributes["tenant"])
 	assert.Equal(t, "u-200", rc.Subject.Attributes["user"])
 	assert.Equal(t, "p-300", rc.Subject.Attributes["platform"])

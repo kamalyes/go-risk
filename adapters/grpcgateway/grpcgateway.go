@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-09 20:19:33
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 11:25:36
+ * @LastEditTime: 2026-03-17 11:56:31
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway.go
  * @Description: grpc-gateway 风控适配器（HTTP 中间件 + gRPC 一元拦截器）
  *
@@ -51,6 +51,7 @@ func UnaryServerInterceptorWith(e core.Engine, h nethttp.SubjectAttributes) grpc
 // extract 从 gRPC 上下文（metadata + peer）提取归一化风控上下文。
 func extract(ctx context.Context, method string, h nethttp.SubjectAttributes) *core.RiskContext {
 	rc := &core.RiskContext{
+		TraceID: core.NewTraceID(),
 		Method:  method,
 		Path:    method,
 		Headers: map[string]string{},
@@ -67,6 +68,9 @@ func extract(ctx context.Context, method string, h nethttp.SubjectAttributes) *c
 	}
 	rc.Headers = headers
 	rc.HeaderOrder = order
+	if tid := first(md, "x-risk-id"); tid != "" {
+		rc.TraceID = tid
+	}
 	if len(h) > 0 {
 		rc.Subject.Attributes = make(map[string]string, len(h))
 		for attr, key := range h {
