@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-06 19:15:37
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 11:21:35
+ * @LastEditTime: 2026-03-17 12:25:16
  * @FilePath: \go-risk\adapters\gin\gin_test.go
  * @Description: Gin 适配器闭环单元测试
  *
@@ -64,4 +64,18 @@ func TestExtractBody(t *testing.T) {
 	rc := nethttp.ExtractWith(req, nil)
 	assert.Equal(t, "hello", rc.Body)
 	assert.Equal(t, int64(5), rc.BodySize)
+}
+
+func TestMiddlewareSetsTraceHeader(t *testing.T) {
+	gin.SetMode(gin.TestMode)
+	e := engine.New()
+	r := gin.New()
+	r.Use(Middleware(e))
+	r.GET("/health", func(c *gin.Context) {
+		c.String(http.StatusOK, "ok")
+	})
+	req := httptest.NewRequest(http.MethodGet, "/health", nil)
+	rec := httptest.NewRecorder()
+	r.ServeHTTP(rec, req)
+	assert.NotEmpty(t, rec.Header().Get(nethttp.RiskIDHeader))
 }

@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-10 19:37:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 12:05:09
+ * @LastEditTime: 2026-03-17 12:28:11
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway_test.go
  * @Description: grpc-gateway 适配器闭环单元测试
  *
@@ -72,4 +72,28 @@ func TestExtractFromMetadata(t *testing.T) {
 	assert.Equal(t, "unit-test", rc.UserAgent)
 	assert.Equal(t, "10.0.0.5", rc.Subject.IP)
 	assert.Equal(t, "/demo.Service/Hello", rc.Path)
+}
+
+type mockServerStream struct {
+	grpc.ServerTransportStream
+	hdr metadata.MD
+}
+
+func (m *mockServerStream) SetHeader(md metadata.MD) error {
+	m.hdr = md
+	return nil
+}
+
+func TestUnaryInterceptorSetsTraceHeader(t *testing.T) {
+	e := engine.New()
+	interceptor := UnaryServerInterceptor(e)
+	ms := &mockServerStream{}
+	ctx := grpc.NewContextWithServerTransportStream(context.Background(), ms)
+	info := &grpc.UnaryServerInfo{FullMethod: "/demo.Service/Hello"}
+	handler := func(ctx context.Context, req any) (any, error) {
+		return "ok", nil
+	}
+	_, err := interceptor(ctx, "req", info, handler)
+	assert.NoError(t, err)
+	assert.NotEmpty(t, ms.hdr.Get("x-risk-id"))
 }

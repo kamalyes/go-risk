@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-27 13:06:28
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 12:01:17
+ * @LastEditTime: 2026-03-17 12:21:33
  * @FilePath: \go-risk\adapters\nethttp\nethttp.go
  * @Description: 标准库 net/http 适配器
  *
@@ -22,8 +22,8 @@ import (
 
 const maxBodyRead = 1 << 20 // 最多读取 1MB 请求体
 
-// riskIDHeader risk 框架专属链路标识请求头，避免占用业务通用命名
-const riskIDHeader = "X-Risk-Id"
+// RiskIDHeader risk 框架专属链路标识请求头，避免占用业务通用命名
+const RiskIDHeader = "X-Risk-Id"
 
 // SubjectAttributes 扩展身份属性来源映射，属性名 -> 来源 header 名
 // 通用框架不预设任何业务维度，接入方按需声明要注入的属性及其来源
@@ -38,7 +38,7 @@ func Wrap(e core.Engine, next http.Handler) http.Handler {
 func WrapWith(e core.Engine, next http.Handler, h SubjectAttributes) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		rc := ExtractWith(r, h)
-		w.Header().Set(riskIDHeader, rc.TraceID)
+		w.Header().Set(RiskIDHeader, rc.TraceID)
 		decision := e.Evaluate(r.Context(), rc)
 		if !allow(decision) {
 			writeDecision(w, decision)
@@ -105,7 +105,7 @@ func attributes(r *http.Request, m SubjectAttributes) map[string]string {
 
 // traceID 优先透传 risk 专属链路标识，缺失时生成新标识
 func traceID(r *http.Request) string {
-	if id := r.Header.Get(riskIDHeader); id != "" {
+	if id := r.Header.Get(RiskIDHeader); id != "" {
 		return id
 	}
 	return core.NewTraceID()

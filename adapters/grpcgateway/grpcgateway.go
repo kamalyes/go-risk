@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-09 20:19:33
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 11:56:31
+ * @LastEditTime: 2026-03-17 12:26:50
  * @FilePath: \go-risk\adapters\grpcgateway\grpcgateway.go
  * @Description: grpc-gateway 风控适配器（HTTP 中间件 + gRPC 一元拦截器）
  *
@@ -40,6 +40,7 @@ func UnaryServerInterceptor(e core.Engine) grpc.UnaryServerInterceptor {
 func UnaryServerInterceptorWith(e core.Engine, h nethttp.SubjectAttributes) grpc.UnaryServerInterceptor {
 	return func(ctx context.Context, req any, info *grpc.UnaryServerInfo, handler grpc.UnaryHandler) (any, error) {
 		rc := extract(ctx, info.FullMethod, h)
+		grpc.SetHeader(ctx, metadata.Pairs("x-risk-id", rc.TraceID))
 		decision := e.Evaluate(ctx, rc)
 		if !allow(decision) {
 			return nil, decisionError(decision)

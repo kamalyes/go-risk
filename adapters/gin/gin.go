@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-05 19:26:11
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-17 11:20:07
+ * @LastEditTime: 2026-03-17 12:23:08
  * @FilePath: \go-risk\adapters\gin\gin.go
  * @Description: Gin 框架风控适配器（薄中间件）
  *
@@ -28,6 +28,7 @@ func Middleware(e core.Engine) gin.HandlerFunc {
 func MiddlewareWith(e core.Engine, h nethttp.SubjectAttributes) gin.HandlerFunc {
 	return func(c *gin.Context) {
 		rc := nethttp.ExtractWith(c.Request, h)
+		c.Header(nethttp.RiskIDHeader, rc.TraceID)
 		decision := e.Evaluate(c.Request.Context(), rc)
 		if !allow(decision) {
 			writeDecision(c, decision)
