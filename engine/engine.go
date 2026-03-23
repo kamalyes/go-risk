@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-01-23 09:31:22
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-03 20:39:57
+ * @LastEditTime: 2026-03-23 21:05:38
  * @FilePath: \go-risk\engine\engine.go
  * @Description: 风控引擎装配与统一入口
  *
@@ -15,6 +15,8 @@ import (
 	"context"
 	"log/slog"
 
+	"github.com/kamalyes/go-risk/banlist"
+	"github.com/kamalyes/go-risk/control"
 	"github.com/kamalyes/go-risk/core"
 	"github.com/kamalyes/go-risk/fingerprint"
 	"github.com/kamalyes/go-risk/notifier"
@@ -34,6 +36,9 @@ type Engine struct {
 	logger   *slog.Logger
 	slots    []core.Slot
 	chain    *slotChain
+	banList  *banlist.List
+	manager  *control.Manager
+	syncer   *control.Syncer
 	ctx      context.Context
 	cancel   context.CancelFunc
 }
@@ -49,7 +54,19 @@ func New(opts ...Option) *Engine {
 		opt(e)
 	}
 	e.ensureDefaults()
+	e.startSubscriptions()
 	return e
+}
+
+// startSubscriptions 在通知器解析完成后订阅封禁与规则同步事件，闭合分布式一致链路
+func (e *Engine) startSubscriptions() {
+	if e.banList != nil {
+		_ = banlist.Subscribe(e.ctx, e.notifier, e.banList)
+	}
+	if e.manager != nil {
+		e.syncer = control.NewSyncer(e.manager, e.notifier, "")
+		_ = e.syncer.Run(e.ctx)
+	}
 }
 
 // ensureDefaults 为未注入的后端补齐内存默认实现，并装配 Slot 链。
@@ -115,16 +132,35 @@ func WithLogger(l *slog.Logger) Option {
 	}
 }
 
-// WithBuiltinProtection 一键接入 HTTP/TLS 指纹、语义检测、内置规则集（WAF/蜜罐/威胁情报）与分级处置。
+// WithBuiltinProtection 一键接入封禁名单拦截、HTTP/TLS 指纹、语义检测、内置规则集（WAF/蜜罐/威胁情报）与分级处置。
 func WithBuiltinProtection() Option {
 	return func(e *Engine) {
+		e.banList = banlist.New()
+		e.manager = control.New(rules.Builtin())
 		e.slots = append(e.slots,
+			banlist.NewSlot(e.banList),
 			fingerprint.NewSlot(fingerprint.NewHTTP(), fingerprint.NewTLS()),
 			semantic.NewSlot(),
-			rules.NewSlot(rules.Builtin()),
+			rules.NewDynamicSlot(e.manager.Current),
 			scorer.NewSlot(e.cfg),
 		)
 	}
+}
+
+// Rules 返回当前生效的规则快照，控制面读取或基于此派生新快照
+func (e *Engine) Rules() core.RuleSnapshot {
+	if e.manager == nil {
+		return core.RuleSnapshot{}
+	}
+	return e.manager.Current()
+}
+
+// ApplyRules 应用并广播一套规则快照到集群，实现控制面跨实例调配
+func (e *Engine) ApplyRules(ctx context.Context, snapshot core.RuleSnapshot) error {
+	if e.syncer == nil {
+		return nil
+	}
+	return e.syncer.Apply(ctx, snapshot)
 }
 
 // Evaluate 同步决策

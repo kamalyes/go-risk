@@ -2,7 +2,7 @@
  * @Author: kamalyes 501893067@qq.com
  * @Date: 2026-03-03 21:03:28
  * @LastEditors: kamalyes 501893067@qq.com
- * @LastEditTime: 2026-03-03 21:03:28
+ * @LastEditTime: 2026-03-23 21:10:05
  * @FilePath: \go-risk\engine\engine_test.go
  * @Description: 引擎装配与 Slot 链单元测试
  *
@@ -13,12 +13,14 @@ package engine
 
 import (
 	"context"
+	"encoding/json"
 	"io"
 	"log/slog"
 	"testing"
 	"time"
 
 	"github.com/kamalyes/go-risk/core"
+	"github.com/kamalyes/go-risk/notifier"
 	"github.com/kamalyes/go-risk/observe"
 	"github.com/stretchr/testify/assert"
 )
@@ -33,7 +35,7 @@ func (mockStore) LoadBanList(context.Context) ([]core.BanEntry, error) { return 
 
 type mockNotifier struct{}
 
-func (mockNotifier) Publish(context.Context, string, []byte) error        { return nil }
+func (mockNotifier) Publish(context.Context, string, []byte) error         { return nil }
 func (mockNotifier) Subscribe(context.Context, string, func([]byte)) error { return nil }
 
 type mockSlot struct {
@@ -109,4 +111,56 @@ func TestSlotChainRunAggregate(t *testing.T) {
 	assert.Equal(t, core.Allow, d.Verdict)
 	assert.Equal(t, 30, d.Score)
 	assert.Len(t, d.Reasons, 2)
+}
+
+func TestWithBuiltinProtectionWiresBanListAndControlPlane(t *testing.T) {
+	e := New(WithBuiltinProtection())
+
+	assert.NotNil(t, e.banList)
+	assert.NotNil(t, e.manager)
+	assert.NotNil(t, e.syncer)
+	assert.NotEmpty(t, e.slots)
+	// 封禁名单拦截 Slot 位于链首
+	assert.Equal(t, "banlist", e.slots[0].Name())
+	// 内置规则集已装载
+	assert.NotEmpty(t, e.Rules().Rules)
+}
+
+func TestWithBuiltinProtectionBanListIntercept(t *testing.T) {
+	n := notifier.NewMemory()
+	e := New(WithBuiltinProtection(), WithNotifier(n))
+
+	entries := []core.BanEntry{{Key: "ip:10.0.0.1", Scope: "ip", ExpireAt: time.Now().Add(time.Hour)}}
+	payload, _ := json.Marshal(entries)
+
+	assert.NoError(t, n.Publish(context.Background(), notifier.TopicBan, payload))
+	rc := &core.RiskContext{Subject: core.Subject{IP: "10.0.0.1"}}
+	assert.Equal(t, core.Ban, e.Evaluate(context.Background(), rc).Verdict)
+
+	assert.NoError(t, n.Publish(context.Background(), notifier.TopicUnban, payload))
+	assert.NotEqual(t, core.Ban, e.Evaluate(context.Background(), rc).Verdict)
+}
+
+func TestWithBuiltinProtectionApplyRules(t *testing.T) {
+	e := New(WithBuiltinProtection())
+	assert.NotEmpty(t, e.Rules().Rules)
+
+	snapshot := core.RuleSnapshot{
+		Version: "v2",
+		Rules: []core.Rule{{
+			ID:       "block-admin",
+			Priority: 1,
+			Targets:  []core.Target{{Collection: "path"}},
+			Op:       core.OpContains,
+			Pattern:  "/admin",
+			Score:    100,
+			Action:   core.ActionBan,
+			Enabled:  true,
+		}},
+	}
+	assert.NoError(t, e.ApplyRules(context.Background(), snapshot))
+	assert.Len(t, e.Rules().Rules, 1)
+
+	rc := &core.RiskContext{Path: "/admin/login"}
+	assert.Equal(t, core.Ban, e.Evaluate(context.Background(), rc).Verdict)
 }
